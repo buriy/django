@@ -255,11 +255,9 @@ class ChangeList(object):
 
     def get_lookup_params(self, use_distinct=False):
         lookup_params = self.params.copy() # a dictionary of the query string
-
         for ignored in IGNORED_PARAMS:
             if ignored in lookup_params:
                 del lookup_params[ignored]
-
         for key, value in lookup_params.items():
             if not isinstance(key, str):
                 # 'key' will be used as a keyword argument later, so Python
