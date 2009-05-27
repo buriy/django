@@ -28,7 +28,7 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import os, sys, time, signal
+import os, sys, time, signal, imp
 
 try:
     import thread
@@ -52,9 +52,42 @@ RUN_RELOADER = True
 _mtimes = {}
 _win = (sys.platform == "win32")
 
+def get_loaded_modules():
+    return filter(lambda v: v, map(lambda m: getattr(m, "__file__", None), sys.modules.values()))
+
+class ModuleLoaderHook:
+    __caught = set()
+    def __init__(self):
+        before = get_loaded_modules()
+        ModuleLoaderHook.__caught = set(before) 
+    
+    def tracked(self):
+        return list(self.__caught)
+
+    def find_module(self, name, path=None):
+        try:
+            if path: 
+                name = name.split('.')[-1]
+            file, filename, _info = imp.find_module(name, path)
+            self.__caught.add(filename)
+            if file:
+                file.close()
+        except:
+            pass
+        return None #as it was not found
+
+loader = None
+def hook_imports():
+    global loader
+    loader = ModuleLoaderHook()
+    sys.meta_path.insert(0, loader)
+
 def code_changed():
     global _mtimes, _win
-    for filename in filter(lambda v: v, map(lambda m: getattr(m, "__file__", None), sys.modules.values())):
+    files = get_loaded_modules()
+    if loader:
+        files = loader.tracked()
+    for filename in files:
         if filename.endswith(".pyc") or filename.endswith(".pyo"):
             filename = filename[:-1]
         if not os.path.exists(filename):
@@ -127,6 +160,7 @@ def jython_reloader(main_func, args, kwargs):
 
 
 def main(main_func, args=None, kwargs=None):
+    hook_imports()
     if args is None:
         args = ()
     if kwargs is None:
