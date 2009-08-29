@@ -144,6 +144,7 @@ var DateTimeShortcuts = {
         shortcuts_span.appendChild(document.createTextNode('\240|\240'));
         shortcuts_span.appendChild(cal_link);
 
+        addEvent(inp, 'click', function() { DateTimeShortcuts.openCalendar(num); return true; });
         // Create calendarbox div.
         //
         // Markup looks like:
