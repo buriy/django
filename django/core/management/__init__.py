@@ -398,7 +398,7 @@ def setup_environ(settings_mod, original_settings_path=None):
     project_directory, settings_filename = os.path.split(p)
     if project_directory == os.curdir or not project_directory:
         project_directory = os.getcwd()
-    project_name = os.path.basename(project_directory)
+#    project_name = os.path.basename(project_directory)
 
     # Strip filename suffix to get the module name.
     settings_name = os.path.splitext(settings_filename)[0]
@@ -414,14 +414,15 @@ def setup_environ(settings_mod, original_settings_path=None):
         # If DJANGO_SETTINGS_MODULE is already set, use it.
         os.environ['DJANGO_SETTINGS_MODULE'] = os.environ.get(
             'DJANGO_SETTINGS_MODULE',
-            '%s.%s' % (project_name, settings_name)
+#           '%s.%s' % (project_name, settings_name)
+            '%s' % settings_name
         )
 
     # Import the project module. We add the parent directory to PYTHONPATH to
     # avoid some of the path errors new users can have.
-    sys.path.append(os.path.join(project_directory, os.pardir))
-    project_module = import_module(project_name)
-    sys.path.pop()
+#    sys.path.append(os.path.join(project_directory, os.pardir))
+#    project_module = import_module(project_name)
+#    sys.path.pop()
 
     return project_directory
 
