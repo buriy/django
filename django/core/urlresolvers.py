@@ -6,6 +6,7 @@ a string) and returns a tuple in this format:
 
     (view_function, function_args, function_kwargs)
 """
+import sys
 
 import re
 
@@ -129,10 +130,10 @@ class RegexURLPattern(object):
             self._callback = get_callable(self._callback_str)
         except ImportError, e:
             mod_name, _ = get_mod_func(self._callback_str)
-            raise ViewDoesNotExist("Could not import %s. Error was: %s" % (mod_name, str(e)))
+            raise ViewDoesNotExist("Could not import %s. Error was: %s" % (mod_name, str(e))), None, sys.exc_info()[2]
         except AttributeError, e:
             mod_name, func_name = get_mod_func(self._callback_str)
-            raise ViewDoesNotExist("Tried %s in module %s. Error was: %s" % (func_name, mod_name, str(e)))
+            raise ViewDoesNotExist("Tried %s in module %s. Error was: %s" % (func_name, mod_name, str(e))), None, sys.exc_info()[2]
         return self._callback
     callback = property(_get_callback)
 
@@ -244,7 +245,7 @@ class RegexURLResolver(object):
         try:
             iter(patterns)
         except TypeError:
-            raise ImproperlyConfigured("The included urlconf %s doesn't have any patterns in it" % self.urlconf_name)
+            raise ImproperlyConfigured("The included urlconf %s doesn't have any patterns in it" % self.urlconf_name), None, sys.exc_info()[2]
         return patterns
     url_patterns = property(_get_url_patterns)
 
@@ -267,7 +268,7 @@ class RegexURLResolver(object):
         try:
             lookup_view = get_callable(lookup_view, True)
         except (ImportError, AttributeError), e:
-            raise NoReverseMatch("Error importing '%s': %s." % (lookup_view, e))
+            raise NoReverseMatch("Error importing '%s': %s." % (lookup_view, e)), None, sys.exc_info()[2]
         possibilities = self.reverse_dict.getlist(lookup_view)
         for possibility, pattern in possibilities:
             for result, params in possibility:
@@ -293,7 +294,7 @@ class RegexURLResolver(object):
         else:
             lookup_view_s = lookup_view
         raise NoReverseMatch("Reverse for '%s' with arguments '%s' and keyword "
-                "arguments '%s' not found." % (lookup_view_s, args, kwargs))
+                "arguments '%s' not found." % (lookup_view_s, args, kwargs)), None, sys.exc_info()[2]
 
 def resolve(path, urlconf=None):
     if urlconf is None:

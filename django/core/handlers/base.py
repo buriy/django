@@ -34,7 +34,7 @@ class BaseHandler(object):
             try:
                 dot = middleware_path.rindex('.')
             except ValueError:
-                raise exceptions.ImproperlyConfigured('%s isn\'t a middleware module' % middleware_path)
+                raise exceptions.ImproperlyConfigured('%s isn\'t a middleware module' % middleware_path), None, sys.exc_info()[2]
             mw_module, mw_classname = middleware_path[:dot], middleware_path[dot+1:]
             try:
                 mod = import_module(mw_module)
