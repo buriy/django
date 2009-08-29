@@ -6,6 +6,7 @@ a string) and returns a tuple in this format:
 
     (view_function, function_args, function_kwargs)
 """
+import sys
 
 import re
 from threading import local
@@ -202,8 +203,14 @@ class RegexURLPattern(LocaleRegexProvider):
     def callback(self):
         if self._callback is not None:
             return self._callback
-
-        self._callback = get_callable(self._callback_str)
+        try:
+            self._callback = get_callable(self._callback_str)
+        except ImportError, e:
+            mod_name, _ = get_mod_func(self._callback_str)
+            raise ViewDoesNotExist("Could not import %s. Error was: %s" % (mod_name, str(e))), None, sys.exc_info()[2]
+        except AttributeError, e:
+            mod_name, func_name = get_mod_func(self._callback_str)
+            raise ViewDoesNotExist("Tried %s in module %s. Error was: %s" % (func_name, mod_name, str(e))), None, sys.exc_info()[2]
         return self._callback
 
 class RegexURLResolver(LocaleRegexProvider):
@@ -319,7 +326,7 @@ class RegexURLResolver(LocaleRegexProvider):
         try:
             iter(patterns)
         except TypeError:
-            raise ImproperlyConfigured("The included urlconf %s doesn't have any patterns in it" % self.urlconf_name)
+            raise ImproperlyConfigured("The included urlconf %s doesn't have any patterns in it" % self.urlconf_name), None, sys.exc_info()[2]
         return patterns
 
     def _resolve_special(self, view_type):
@@ -343,7 +350,7 @@ class RegexURLResolver(LocaleRegexProvider):
         try:
             lookup_view = get_callable(lookup_view, True)
         except (ImportError, AttributeError), e:
-            raise NoReverseMatch("Error importing '%s': %s." % (lookup_view, e))
+            raise NoReverseMatch("Error importing '%s': %s." % (lookup_view, e)), None, sys.exc_info()[2]
         possibilities = self.reverse_dict.getlist(lookup_view)
         for possibility, pattern, defaults in possibilities:
             for result, params in possibility:
@@ -376,7 +383,7 @@ class RegexURLResolver(LocaleRegexProvider):
         else:
             lookup_view_s = lookup_view
         raise NoReverseMatch("Reverse for '%s' with arguments '%s' and keyword "
-                "arguments '%s' not found." % (lookup_view_s, args, kwargs))
+                "arguments '%s' not found." % (lookup_view_s, args, kwargs)), None, sys.exc_info()[2]
 
 class LocaleRegexURLResolver(RegexURLResolver):
     """

@@ -40,7 +40,7 @@ class BaseHandler(object):
             try:
                 mw_module, mw_classname = middleware_path.rsplit('.', 1)
             except ValueError:
-                raise exceptions.ImproperlyConfigured('%s isn\'t a middleware module' % middleware_path)
+                raise exceptions.ImproperlyConfigured('%s isn\'t a middleware module' % middleware_path), None, sys.exc_info()[2]
             try:
                 mod = import_module(mw_module)
             except ImportError, e:

@@ -6,6 +6,7 @@ variable, and then from django.conf.global_settings; see the global settings fil
 a list of all possible variables.
 """
 
+import sys
 import os
 import re
 import time     # Needed for Windows
@@ -37,7 +38,7 @@ class LazySettings(LazyObject):
         except KeyError:
             # NOTE: This is arguably an EnvironmentError, but that causes
             # problems with Python's interactive help.
-            raise ImportError("Settings cannot be imported, because environment variable %s is undefined." % ENVIRONMENT_VARIABLE)
+            raise ImportError("Settings cannot be imported, because environment variable %s is undefined." % ENVIRONMENT_VARIABLE), None, sys.exc_info()[2]
 
         self._wrapped = Settings(settings_module)
 
@@ -89,7 +90,7 @@ class Settings(BaseSettings):
         try:
             mod = importlib.import_module(self.SETTINGS_MODULE)
         except ImportError, e:
-            raise ImportError("Could not import settings '%s' (Is it on sys.path?): %s" % (self.SETTINGS_MODULE, e))
+            raise ImportError("Could not import settings '%s' (Is it on sys.path? Does it have syntax errors?): %s" % (self.SETTINGS_MODULE, e)), None, sys.exc_info()[2]
 
         # Settings that should be converted into tuples if they're mistakenly entered
         # as strings.
