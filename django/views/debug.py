@@ -58,6 +58,68 @@ def technical_500_response(request, exc_type, exc_value, tb):
     html = reporter.get_traceback_html()
     return HttpResponseServerError(html, mimetype='text/html')
 
+def get_traceback_color_scheme():
+    """
+    Use settings.TRACEBACK_COLOR_SCHEME to customize traceback colors.
+    Format: 'prefix.part': (bg color, wrapper bg color, text color, show details),
+    any one can be omitted, or replaced with None.
+    For "show details", possible values are None, True and False,
+    where True means initially opened, False and None the opposite.
+    Prefix is written without final dot, and used in
+    "prefix.part.*"-style pattern matching, where
+    the first matched pattern is chosen.
+    Prefix can also be set to None, which means, do never show these stack items.
+    Unless overridden, installed apps are also colorized,
+    and special 'INSTALLED_APPS' constant is used for them.
+    You can also set your own pattern matcher,
+    please see TRACEBACK_FRAME_COLORS below.
+    """
+    TRACEBACK_COLOR_SCHEME = {
+        'django.template': ('#ffa', '#ffffe2'),
+        'django.contrib': ('#fda', '#efd'),
+        'django.utils': ('#cda', '#efd'),
+        'django.db': ('#cfb', '#efd'),
+        'django': ('#cfb','#efd'),
+        'sqlite3': ('#cfe',''),
+        'psycopg2': ('#cfe',),
+        'INSTALLED_APPS': ('#ddf', '#fffff2'),
+        '': ('#bbe', ),
+    }
+    scheme = getattr(settings, 'TRACEBACK_COLOR_SCHEME', TRACEBACK_COLOR_SCHEME)
+    return scheme
+
+def get_traceback_frame_colors(module_name, tb_frame):
+    """
+    For python module name (like, "django.template.__init__"), 
+    returns the first prefix-matched color. By default, it's
+    "django.*" rule.
+    Default colors are passed as empty module_name, if module name
+    can't be determined, empty string is assumed.
+    Output format: safe-pattern-name, colors
+    Colors is tuple of (bg color, wrapper bg color, text color),
+    last colors can be omitted.
+    Pattern name is encoded to be safe css class name.
+    You're able to make your completely own colors matcher,
+    set TRACEBACK_FRAME_COLORS to your function then.
+    """
+    if hasattr(settings, 'TRACEBACK_FRAME_COLORS'):
+        return getattr(settings, 'TRACEBACK_FRAME_COLORS')(module_name)
+    
+    scheme = get_traceback_color_scheme()
+    
+    #sort keys so a.b is before a, and empty key is the last 
+    keys = sorted(scheme.keys(), reverse=True)
+    
+    for prefix in keys:
+        if module_name.startswith(prefix+'.') or module_name == prefix:
+            return prefix
+
+    for prefix in getattr(settings, 'INSTALLED_APPS', ()):
+        if module_name.startswith(prefix+'.') or module_name == prefix:
+            return 'INSTALLED_APPS'
+    
+    return ''
+
 class ExceptionReporter:
     """
     A class to organize and coordinate reporting on exceptions.
@@ -76,7 +138,38 @@ class ExceptionReporter:
         if isinstance(self.exc_type, basestring):
             self.exc_value = Exception('Deprecated String Exception: %r' % self.exc_type)
             self.exc_type = type(self.exc_value)
+    
+    def get_frame_colors_css(self, existing_types):
+        required_types = set(['']) | set(existing_types)
+        
+        color_fixes = [
+            '.frame%s div.context ol.context-line li { background-color:%s; }',
+            'ul.traceback li.frame%s { background-color: %s;}',
+            '.frame%s div.context ol.context-line li { color:%s; }',
+        ]
+        visibility_fixes = [ 
+            '.frame%s div.context ol.pre-context { display:block !important; }'
+            '.frame%s div.context ol.post-context { display:block !important; }'
+        ]
+        
+        scheme = get_traceback_color_scheme()
 
+        extra_styles = []
+        
+        for frame_type, frame_colors in scheme.iteritems():
+            classes = frame_type.replace('.','-')
+            if classes in required_types:
+                classes = classes and '.'+classes or ''  
+                for pos, attr in enumerate(frame_colors):
+                    if attr:
+                        if pos<3:
+                            line = color_fixes[pos] % (classes, attr)
+                            extra_styles.append(line)
+                        else:
+                            for fix in visibility_fixes:
+                                extra_styles.append(fix % classes)
+        return extra_styles
+    
     def get_traceback_html(self):
         "Return HTML code for traceback."
 
@@ -107,7 +200,10 @@ class ExceptionReporter:
             self.get_template_exception_info()
 
         frames = self.get_traceback_frames()
-
+        
+        existing_types = [frame['classes'] for frame in frames]  
+        extra_styles = self.get_frame_colors_css(existing_types)
+        
         unicode_hint = ''
         if issubclass(self.exc_type, UnicodeError):
             start = getattr(self.exc_value, 'start', None)
@@ -118,6 +214,7 @@ class ExceptionReporter:
         from django import get_version
         t = Template(TECHNICAL_500_TEMPLATE, name='Technical 500 template')
         c = Context({
+            'extra_styles': '\n    '.join(extra_styles),
             'exception_type': self.exc_type.__name__,
             'exception_value': smart_unicode(self.exc_value, errors='replace'),
             'unicode_hint': unicode_hint,
@@ -224,11 +321,13 @@ class ExceptionReporter:
             function = tb.tb_frame.f_code.co_name
             lineno = tb.tb_lineno - 1
             loader = tb.tb_frame.f_globals.get('__loader__')
-            module_name = tb.tb_frame.f_globals.get('__name__')
+            module_name = tb.tb_frame.f_globals.get('__name__') or ''
+            classes = get_traceback_frame_colors(module_name, tb.tb_frame)
             pre_context_lineno, pre_context, context_line, post_context = self._get_lines_from_file(filename, lineno, 7, loader, module_name)
             if pre_context_lineno is not None:
                 frames.append({
                     'tb': tb,
+                    'classes': classes.replace('.','-'),
                     'filename': filename,
                     'function': function,
                     'lineno': lineno + 1,
@@ -333,11 +432,11 @@ TECHNICAL_500_TEMPLATE = """
     table.source th { color:#666; }
     table.source td { font-family:monospace; white-space:pre; border-bottom:1px solid #eee; }
     ul.traceback { list-style-type:none; }
-    ul.traceback li.frame { margin-bottom:1em; }
+    ul.traceback li.frame { padding-bottom:1em; }
     div.context { margin: 10px 0; }
     div.context ol { padding-left:30px; margin:0 10px; list-style-position: inside; }
     div.context ol li { font-family:monospace; white-space:pre; color:#666; cursor:pointer; }
-    div.context ol.context-line li { color:black; background-color:#ccc; }
+    div.context ol.context-line li { color:black; }
     div.context ol.context-line li span { float: right; }
     div.commands { margin-left: 40px; }
     div.commands a { color:black; text-decoration:none; }
@@ -347,7 +446,7 @@ TECHNICAL_500_TEMPLATE = """
     #template, #template-not-exist { background:#f6f6f6; }
     #template-not-exist ul { margin: 0 0 0 20px; }
     #unicode-hint { background:#eee; }
-    #traceback { background:#eee; }
+    #traceback { background-color:#ffe; }
     #requestinfo { background:#f6f6f6; padding-left:120px; }
     #summary table { border:none; background:transparent; }
     #requestinfo h2, #requestinfo h3 { position:relative; margin-left:-100px; }
@@ -357,6 +456,7 @@ TECHNICAL_500_TEMPLATE = """
     h2 span.commands { font-size:.7em;}
     span.commands a:link {color:#5E5694;}
     pre.exception_value { font-family: sans-serif; color: #666; font-size: 1.5em; margin: 10px 0 10px 0; }
+    {{ extra_styles }}
   </style>
   <script type="text/javascript">
   //<!--
@@ -508,7 +608,7 @@ TECHNICAL_500_TEMPLATE = """
   <div id="browserTraceback">
     <ul class="traceback">
       {% for frame in frames %}
-        <li class="frame">
+        <li class="frame {{ frame.classes }}">
           <code>{{ frame.filename|escape }}</code> in <code>{{ frame.function|escape }}</code>
 
           {% if frame.context_line %}
