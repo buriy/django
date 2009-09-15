@@ -418,8 +418,13 @@ def technical_404_response(request, exception):
 def empty_urlconf(request):
     "Create an empty URLconf 404 error response."
     t = Template(EMPTY_URLCONF_TEMPLATE, name='Empty URLConf template')
+    import os.path
+    if '.' in settings.SETTINGS_MODULE:
+        project_name = settings.SETTINGS_MODULE.split('.')[0]
+    else:
+        project_name = os.path.dirname(os.path.abspath(settings.SETTINGS_MODULE))
     c = Context({
-        'project_name': settings.SETTINGS_MODULE.split('.')[0]
+        'project_name': project_name
     })
     return HttpResponse(t.render(c), mimetype='text/html')
 
