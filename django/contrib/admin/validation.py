@@ -347,7 +347,16 @@ def check_isdict(cls, label, obj):
 
 def get_field(cls, model, opts, label, field):
     try:
-        return opts.get_field(field)
+        if '__' in field:
+            f = None
+            m = model
+            path = field.split('__')
+            for field_name in path[:-1]:
+                f = model._meta.get_field(field_name)
+                model = f.rel.to
+            return opts.get_field(path[0])
+        else:
+            return opts.get_field(field)
     except models.FieldDoesNotExist:
         raise ImproperlyConfigured("'%s.%s' refers to field '%s' that is missing from model '%s'."
                 % (cls.__name__, label, field, model.__name__))

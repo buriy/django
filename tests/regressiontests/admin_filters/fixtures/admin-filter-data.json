@@ -1,0 +1,23 @@
+[
+    {
+        "pk": 1,
+        "model": "admin_filters.filterable",
+        "fields": {
+            "sites": [1]
+        }
+    },
+    {
+        "pk": 2,
+        "model": "admin_filters.filterable",
+        "fields": {
+            "sites": []
+        }
+    },
+    {
+        "pk": 3,
+        "model": "admin_filters.filterable",
+        "fields": {
+            "sites": [1]
+        }
+    }
+]

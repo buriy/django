@@ -69,9 +69,20 @@ class ChangeList(object):
     def get_filters(self, request):
         filter_specs = []
         if self.list_filter:
-            filter_fields = [self.lookup_opts.get_field(field_name) for field_name in self.list_filter]
-            for f in filter_fields:
-                spec = FilterSpec.create(f, request, self.params, self.model, self.model_admin)
+            lookup_opts = self.lookup_opts
+            for filter_name in self.list_filter:
+                if '__' in filter_name:
+                    f = None
+                    model = self.model
+                    path = filter_name.split('__')
+                    for field_name in path[:-1]:
+                        f = model._meta.get_field(field_name)
+                        model = f.rel.to
+                        f = model._meta.get_field(path[-1])
+                        spec = FilterSpec.create(f, request, self.params, model, self.model_admin, field_path=filter_name)
+                else:
+                    f = lookup_opts.get_field(filter_name)
+                    spec = FilterSpec.create(f, request, self.params, self.model, self.model_admin)
                 if spec and spec.has_output():
                     filter_specs.append(spec)
         return filter_specs, bool(filter_specs)
