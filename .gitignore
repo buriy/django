@@ -2,4 +2,4 @@
 *.pot
 docs/_build/
 *.pyc
-
+*.patch
