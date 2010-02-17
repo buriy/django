@@ -84,7 +84,7 @@ class Command(NoArgsCommand):
                         extra_params['db_column'] = column_name
                 else:
                     # Calling `get_field_type` to get the field type string and any
-                    # additional paramters and notes.
+                    # additional parameters and notes.
                     field_type, field_params, field_notes = self.get_field_type(connection, table_name, row)
                     extra_params.update(field_params)
                     comment_notes.extend(field_notes)
@@ -100,8 +100,9 @@ class Command(NoArgsCommand):
 
                 # Don't output 'id = meta.AutoField(primary_key=True)', because
                 # that's assumed if it doesn't exist.
-                if att_name == 'id' and field_type == 'AutoField(' and extra_params == {'primary_key': True}:
-                    continue
+                if att_name == 'id' and field_type == 'AutoField('
+                    and (extra_params == {'primary_key': True} or extra_params == {'primary_key': True, 'unique': True}):
+                        continue
 
                 # Add 'null' and 'blank', if the 'null_ok' flag was present in the
                 # table description.
