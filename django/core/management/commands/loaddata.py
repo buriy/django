@@ -157,17 +157,20 @@ class Command(BaseCommand):
                         else:
                             fixture_count += 1
                             objects_in_fixture = 0
+                            objects_installed = 0
                             if verbosity > 0:
                                 self.stdout.write("Installing %s fixture '%s' from %s.\n" % \
                                     (format, fixture_name, humanize(fixture_dir)))
                             try:
                                 objects = serializers.deserialize(format, fixture, using=using)
                                 for obj in objects:
+                                    objects_in_fixture += 1
+                                    #print obj
                                     if router.allow_syncdb(using, obj.object.__class__):
-                                        objects_in_fixture += 1
                                         models.add(obj.object.__class__)
                                         obj.save(using=using)
-                                object_count += objects_in_fixture
+                                        objects_installed += 1
+                                object_count += objects_installed
                                 label_found = True
                             except (SystemExit, KeyboardInterrupt):
                                 raise
@@ -190,8 +193,16 @@ class Command(BaseCommand):
                             # error was encountered during fixture loading.
                             if objects_in_fixture == 0:
                                 sys.stderr.write(
-                                    self.style.ERROR("No fixture data found for '%s'. (File format may be invalid.)\n" %
+                                    self.style.ERROR("No fixture data found for '%s'. (File format may be invalid, or wrong database chosen)" %
                                         (fixture_name)))
+                                transaction.rollback(using=using)
+                                transaction.leave_transaction_management(using=using)
+                                return
+
+                            elif objects_installed == 0:
+                                sys.stderr.write(
+                                    self.style.ERROR("No applicable data found for '%s'. (Please check allow_syncdb for database %s.)" %
+                                        (fixture_name, using)))
                                 transaction.rollback(using=using)
                                 transaction.leave_transaction_management(using=using)
                                 return
@@ -217,10 +228,10 @@ class Command(BaseCommand):
 
         if object_count == 0:
             if verbosity > 0:
-                self.stdout.write("No fixtures found.\n")
+                print "No fixtures inserted into database %s." % using
         else:
             if verbosity > 0:
-                self.stdout.write("Installed %d object(s) from %d fixture(s)\n" % (object_count, fixture_count))
+                print "Installed %d object(s) from %d fixture(s) into database %s" % (object_count, fixture_count, using)
 
         # Close the DB connection. This is required as a workaround for an
         # edge case in MySQL: if the same connection is used to

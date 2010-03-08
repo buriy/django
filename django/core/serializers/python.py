@@ -8,6 +8,7 @@ from django.conf import settings
 from django.core.serializers import base
 from django.db import models, DEFAULT_DB_ALIAS
 from django.utils.encoding import smart_unicode, is_protected_type
+from django.core import exceptions
 
 class Serializer(base.Serializer):
     """
@@ -70,6 +71,16 @@ class Serializer(base.Serializer):
     def getvalue(self):
         return self.objects
 
+def truncate_unicode(length, value):
+    from django.utils.encoding import force_unicode
+    value = force_unicode(value)
+    if len(value) > length-3:
+        return value[:length-3] + '...'
+    return value
+
+def complex_error(outer_error, inner_error):
+    return base.DeserializationError("%s\n%s" % (outer_error, inner_error))
+
 def Deserializer(object_list, **options):
     """
     Deserialize simple Python objects back into Django ORM instances.
@@ -82,7 +93,13 @@ def Deserializer(object_list, **options):
     for d in object_list:
         # Look up the model and starting build a dict of data for it.
         Model = _get_model(d["model"])
-        data = {Model._meta.pk.attname : Model._meta.pk.to_python(d["pk"])}
+        try:
+            data = {Model._meta.pk.attname : Model._meta.pk.to_python(d["pk"])}
+        except exceptions.ValidationError, e:
+            import sys
+            stripped_pk = truncate_unicode(50, d["pk"])
+            raise complex_error("Invalid primary key for model %s: '%s'" % (Model.__name__, stripped_pk), 
+                                u"Validation error(s): %s" % e.messages), None, sys.exc_traceback
         m2m_data = {}
 
         # Handle each field
@@ -102,7 +119,16 @@ def Deserializer(object_list, **options):
                             return smart_unicode(field.rel.to._meta.pk.to_python(value))
                 else:
                     m2m_convert = lambda v: smart_unicode(field.rel.to._meta.pk.to_python(v))
-                m2m_data[field.name] = [m2m_convert(pk) for pk in field_value]
+                m2m_items = [] 
+                for pk in field_value:
+                    try:
+                        m2m_items.append(m2m_convert(pk))
+                    except exceptions.ValidationError, e:
+                        import sys
+                        stripped_key = truncate_unicode(50, )
+                        raise complex_error("Invalid m2m key for model %s: '%s'" % (Model.__name__, stripped_key), 
+                                            u"Validation error(s): %s" % e.messages), None, sys.exc_traceback
+                m2m_data[field.name] = m2m_items
 
             # Handle FK fields
             elif field.rel and isinstance(field.rel, models.ManyToOneRel):
