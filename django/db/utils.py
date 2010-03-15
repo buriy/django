@@ -3,6 +3,7 @@ import os
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.importlib import import_module
+import sys
 
 
 DEFAULT_DB_ALIAS = 'default'
@@ -26,21 +27,26 @@ def load_backend(backend_name):
         # listing all possible (built-in) database backends.
         backend_dir = os.path.join(os.path.dirname(__file__), 'backends')
         try:
-            available_backends = [f for f in os.listdir(backend_dir)
-                    if os.path.isdir(os.path.join(backend_dir, f))
-                    and not f.startswith('.')]
-        except EnvironmentError:
-            available_backends = []
-        if backend_name.startswith('django.db.backends.'):
-            backend_name = backend_name[19:] # See #15621.
-        if backend_name not in available_backends:
-            error_msg = ("%r isn't an available database backend. \n" +
-                "Try using django.db.backends.XXX, where XXX is one of:\n    %s\n" +
-                "Error was: %s") % \
-                (backend_name, ", ".join(map(repr, sorted(available_backends))), e_user)
-            raise ImproperlyConfigured(error_msg)
-        else:
-            raise # If there's some other error, this must be an error in Django itself.
+            return import_module('.base', backend_name)
+        except ImportError, e_user:
+            # The database backend wasn't found. Display a helpful error message
+            # listing all possible (built-in) database backends.
+            backend_dir = os.path.join(os.path.dirname(__file__), 'backends')
+            try:
+                available_backends = [f for f in os.listdir(backend_dir)
+                        if os.path.isdir(os.path.join(backend_dir, f))
+                        and not f.startswith('.')]
+            except EnvironmentError:
+                available_backends = []
+            available_backends.sort()
+            if backend_name not in available_backends:
+                error_msg = ("%r isn't an available database backend. \n" +
+                    "Try using django.db.backends.XXX, where XXX is one of:\n    %s\n" +
+                    "Error was: %s") % \
+                    (backend_name, ", ".join(map(repr, available_backends)), e_user)
+                raise ImproperlyConfigured(error_msg), None, sys.exc_info()[2]
+            else:
+                raise # If there's some other error, this must be an error in Django itself.
 
 
 class ConnectionDoesNotExist(Exception):
