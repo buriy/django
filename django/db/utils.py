@@ -4,6 +4,7 @@ import os
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.importlib import import_module
+import sys
 
 DEFAULT_DB_ALIAS = 'default'
 
@@ -46,7 +47,7 @@ def load_backend(backend_name):
                     "Try using django.db.backends.XXX, where XXX is one of:\n    %s\n" +
                     "Error was: %s") % \
                     (backend_name, ", ".join(map(repr, available_backends)), e_user)
-                raise ImproperlyConfigured(error_msg)
+                raise ImproperlyConfigured(error_msg), None, sys.exc_info()[2]
             else:
                 raise # If there's some other error, this must be an error in Django itself.
 
