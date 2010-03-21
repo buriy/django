@@ -166,11 +166,42 @@ class Command(BaseCommand):
                                     (format, fixture_name, humanize(fixture_dir)))
                             try:
                                 objects = serializers.deserialize(format, fixture, using=using)
+                                num = {}
                                 for obj in objects:
                                     objects_in_fixture += 1
+                                    t = str(type(obj.object))
+                                    print t, obj
+                                    if 'django.contrib.auth.models.Permission' in t:
+                                        Permission = obj.object.__class__
+                                        if not t in num:
+                                            num[t] = 1
+                                            Permission.objects.db_manager(using).all().delete()
+                                    if 'django.contrib.contenttypes.models.ContentType' in t:
+                                        from django.contrib.contenttypes.models import ContentType
+                                        ContentType.objects.clear_cache()
+                                        k = obj.object.natural_key()
+                                        m = ContentType.objects.db_manager(using)
+                                        try:
+                                            cur = m.get_by_natural_key(*k)
+                                        except ContentType.DoesNotExist:
+                                            print 'Installing content-type', k
+                                            objects_installed += 1
+                                        else:
+                                            print 'Skipping content-type', k
+                                        ct, created = m.get_or_create(
+                                            app_label = obj.object.app_label,
+                                            model = obj.object.model,
+                                            defaults = {'name': obj.object.name},
+                                        )
+#                                        m._add_to_cache(m.db, ct)
+                                        continue
+                                            
+                                    if 'django.contrib.auth.models.User' in t:
+                                        obj.object.username = obj.object.username[:30] 
                                     if router.allow_syncdb(using, obj.object.__class__):
                                         loaded_objects_in_fixture += 1
                                         models.add(obj.object.__class__)
+
                                         obj.save(using=using)
                                 loaded_object_count += loaded_objects_in_fixture
                                 fixture_object_count += objects_in_fixture
