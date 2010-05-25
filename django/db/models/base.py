@@ -272,6 +272,9 @@ class ModelState(object):
         self.adding = True
 
 class Model(object):
+    DoesNotExist = None
+    MultipleObjectsReturned = None
+
     __metaclass__ = ModelBase
     _deferred = False
 
