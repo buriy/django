@@ -245,6 +245,9 @@ class ModelState(object):
         self.db = db
 
 class Model(object):
+    DoesNotExist = None
+    MultipleObjectsReturned = None
+
     __metaclass__ = ModelBase
     _deferred = False
 
