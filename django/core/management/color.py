@@ -7,12 +7,40 @@ import sys
 
 from django.utils import termcolors
 
+console_stdout = sys.stdout
+console_stderr = sys.stderr
+
+def pyreadline_console_patch():
+    try:
+        import pyreadline
+        global console_stdout
+        global console_stderr
+        # isatty is not always implemented, #6223.
+        if hasattr(sys.stdout, 'isatty') and sys.stdout.isatty():    
+            console_stdout = sys.stdout
+            sys.stdout = pyreadline.console.Console()
+            sys.stdout.closed = False
+        if hasattr(sys.stderr, 'isatty') and sys.stderr.isatty():
+            console_stderr = sys.stderr
+            sys.stderr = pyreadline.console.Console()
+            sys.stderr.closed = False
+        return True
+    except ImportError:
+        return False
+
 def supports_color():
     """
     Returns True if the running system's terminal supports color, and False
     otherwise.
     """
     unsupported_platform = (sys.platform in ('win32', 'Pocket PC'))
+
+    if unsupported_platform:
+        if type(sys.stdout) is file: # if console is not patched yet
+            if pyreadline_console_patch():
+                unsupported_platform = False
+        else:
+            unsupported_platform = False
     # isatty is not always implemented, #6223.
     is_a_tty = hasattr(sys.stdout, 'isatty') and sys.stdout.isatty()
     if unsupported_platform or not is_a_tty:
