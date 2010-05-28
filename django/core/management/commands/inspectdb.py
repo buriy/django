@@ -103,7 +103,7 @@ class Command(NoArgsCommand):
 
                 # Don't output 'id = meta.AutoField(primary_key=True)', because
                 # that's assumed if it doesn't exist.
-                if att_name == 'id' and field_type == 'AutoField('
+                if att_name == 'id' and field_type == 'AutoField(' \
                     and (extra_params == {'primary_key': True} or extra_params == {'primary_key': True, 'unique': True}):
                         continue
 
