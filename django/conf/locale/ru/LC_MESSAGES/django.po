@@ -678,9 +678,8 @@ msgstr "да,нет,может быть"
 msgid "%(size)d byte"
 msgid_plural "%(size)d bytes"
 msgstr[0] "%(size)d байт"
-msgstr[1] "%(size)d байт(а)"
-msgstr[2] "%(size)d байт(а)"
-msgstr[3] "%(size)d байт(а)"
+msgstr[1] "%(size)d байта"
+msgstr[2] "%(size)d байт"
 
 #: template/defaultfilters.py:812
 #, python-format
@@ -1016,49 +1015,43 @@ msgstr ","
 msgid "year"
 msgid_plural "years"
 msgstr[0] "год"
-msgstr[1] "лет"
+msgstr[1] "года"
 msgstr[2] "лет"
-msgstr[3] "лет"
 
 #: utils/timesince.py:22
 msgid "month"
 msgid_plural "months"
 msgstr[0] "месяц"
-msgstr[1] "месяцев"
+msgstr[1] "месяца"
 msgstr[2] "месяцев"
-msgstr[3] "месяцев"
 
 #: utils/timesince.py:23
 msgid "week"
 msgid_plural "weeks"
 msgstr[0] "неделя"
-msgstr[1] "недель"
+msgstr[1] "недели"
 msgstr[2] "недель"
-msgstr[3] "недель"
 
 #: utils/timesince.py:24
 msgid "day"
 msgid_plural "days"
 msgstr[0] "день"
-msgstr[1] "дней"
+msgstr[1] "дня"
 msgstr[2] "дней"
-msgstr[3] "дней"
 
 #: utils/timesince.py:25
 msgid "hour"
 msgid_plural "hours"
 msgstr[0] "час"
-msgstr[1] "часов"
+msgstr[1] "часа"
 msgstr[2] "часов"
-msgstr[3] "часов"
 
 #: utils/timesince.py:26
 msgid "minute"
 msgid_plural "minutes"
 msgstr[0] "минута"
-msgstr[1] "минут"
+msgstr[1] "минуты"
 msgstr[2] "минут"
-msgstr[3] "минут"
 
 #: utils/timesince.py:45
 msgid "minutes"
